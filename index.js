@@ -1,7 +1,7 @@
-const { MongoClient, ServerApiVersion } = require('mongodb');
-const express = require('express');
-const cors = require('cors');
-require('dotenv').config();
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const express = require("express");
+const cors = require("cors");
+require("dotenv").config();
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -19,7 +19,7 @@ const client = new MongoClient(uri, {
     version: ServerApiVersion.v1,
     strict: true,
     deprecationErrors: true,
-  }
+  },
 });
 
 async function run() {
@@ -30,22 +30,48 @@ async function run() {
     // database collections
     const menuCollection = client.db("bistroBoss").collection("menu");
     const reviewCollection = client.db("bistroBoss").collection("reviews");
+    const cartCollection = client.db("bistroBoss").collection("carts");
 
     // GET menu data API
-    app.get('/menu', async(req, res) => {
-        const result = await menuCollection.find().toArray();
-        res.send(result);
-    })
+    app.get("/menu", async (req, res) => {
+      const result = await menuCollection.find().toArray();
+      res.send(result);
+    });
 
     // GET reviews data API
-    app.get('/reviews', async(req, res) => {
-        const result = await reviewCollection.find().toArray();
+    app.get("/reviews", async (req, res) => {
+      const result = await reviewCollection.find().toArray();
+      res.send(result);
+    });
+
+    // add item to carts
+    app.post("/carts", async (req, res) => {
+      const cartItem = req.body;
+      const result = await cartCollection.insertOne(cartItem);
+      res.send(result);
+    });
+
+    // get all carts data
+    app.get("/carts", async (req, res) => {
+      const email = req.query.email;
+      const query = { userEmail: email };
+      const result = await cartCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    // delete a cart item
+    app.delete("/carts/:id", async (req, res) => {
+        const id = req.params.id;
+        const query = {_id: new ObjectId(id)};
+        const result = await cartCollection.deleteOne(query);
         res.send(result);
     })
 
     // Send a ping to confirm a successful connection
     // await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+    console.log(
+      "Pinged your deployment. You successfully connected to MongoDB!"
+    );
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
@@ -55,10 +81,10 @@ run().catch(console.dir);
 
 // ------------------------X-----------------------
 
-app.get('/', (req, res) => {
-    res.send("Bistro Boss Server is Running...");
-})
+app.get("/", (req, res) => {
+  res.send("Bistro Boss Server is Running...");
+});
 
 app.listen(port, () => {
-    console.log("Server is Running on port: ", port);
-})
+  console.log("Server is Running on port: ", port);
+});
