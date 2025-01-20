@@ -1,8 +1,8 @@
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const express = require("express");
 const cors = require("cors");
-const cookieParser = require('cookie-parser');
-const jwt = require('jsonwebtoken');
+const cookieParser = require("cookie-parser");
+const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
 const app = express();
@@ -37,27 +37,45 @@ async function run() {
     const userCollection = client.db("bistroBoss").collection("users");
 
     // jwt related API
-    app.post('/jwt', async (req, res) => {
+    app.post("/jwt", async (req, res) => {
       const userInfo = req.body;
-      const token = jwt.sign(userInfo, process.env.ACCESS_TOKEN_SECRET, {expiresIn: '1h'});
-      res.send({token});
-    })
+      const token = jwt.sign(userInfo, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: "1h",
+      });
+      res.send({ token });
+    });
 
     // verify token middleware
     const verifyToken = (req, res, next) => {
-      console.log("inside verify token", req.headers.authorization);
-      if(!req.headers.authorization){
-        return res.status(401).send({message: "Forbidden Access!"});
+      console.log("Verify the token", req.headers.authorization);
+      if (!req.headers.authorization) {
+        return res.status(401).send({ message: "Forbidden Access!" });
       }
       const token = req.headers.authorization;
       jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (error, decoded) => {
-        if(error){
-          return res.status(401).send({message: "Forbidden Access!"});
+        if (error) {
+          return res.status(401).send({ message: "Forbidden Access!" });
         }
+        // console.log("token is verified.")
         req.decoded = decoded;
         next();
-      })
-    }
+      });
+    };
+
+    // get verified admin
+    app.get("/user/admin", async (req, res) => {
+      const email = req.query.email;
+      if (email !== req.decoded.email) {
+        return res.status(403).send({ message: "Unauthorize Access" });
+      }
+      const query = { email: email };
+      const result = await userCollection.findOne(query);
+      let isAdmin;
+      if (user) {
+        isAdmin = user?.role === "admin";
+      }
+      res.send({ isAdmin });
+    });
 
     // GET menu data API
     app.get("/menu", async (req, res) => {
@@ -88,55 +106,55 @@ async function run() {
 
     // delete a cart item
     app.delete("/carts/:id", async (req, res) => {
-        const id = req.params.id;
-        const query = {_id: new ObjectId(id)};
-        const result = await cartCollection.deleteOne(query);
-        res.send(result);
-    })
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await cartCollection.deleteOne(query);
+      res.send(result);
+    });
 
     // add new user
-    app.post('/users', async (req, res) => {
-        const user = req.body;
-        const query = {email: user.email}
-        const existingUser = await userCollection.findOne(query);
-        if(existingUser){
-            return res.send({loggedin: true});
-        }
-        const result = await userCollection.insertOne(user);
-        res.send(result);
-    })
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+      const query = { email: user.email };
+      const existingUser = await userCollection.findOne(query);
+      if (existingUser) {
+        return res.send({ loggedin: true });
+      }
+      const result = await userCollection.insertOne(user);
+      res.send(result);
+    });
 
     // get all users
-    app.get('/users', verifyToken, async (req, res) => {
+    app.get("/users", verifyToken, async (req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result);
-    })
+    });
 
     // make user admin
-    app.patch('/users/admin/:id', async (req, res) => {
+    app.patch("/users/admin/:id", async (req, res) => {
       const id = req.params.id;
-      const filter = {_id: new ObjectId(id)}
+      const filter = { _id: new ObjectId(id) };
       const user = await userCollection.findOne(filter);
-      if(user){
+      if (user) {
         const updateDoc = {
           $set: {
-            role: 'admin'
+            role: "admin",
           },
         };
         const result = await userCollection.updateOne(filter, updateDoc);
         console.log(user);
         return res.send(result);
       }
-      res.send({message: "Sorry! No user can be found."});
-    })
+      res.send({ message: "Sorry! No user can be found." });
+    });
 
     // delete a user
-    app.delete('/users/:id', async (req, res) => {
+    app.delete("/users/:id", async (req, res) => {
       const id = req.params.id;
-      const query = {_id: new ObjectId(id)};
+      const query = { _id: new ObjectId(id) };
       const result = await userCollection.deleteOne(query);
       res.send(result);
-    })
+    });
 
     // Send a ping to confirm a successful connection
     // await client.db("admin").command({ ping: 1 });
