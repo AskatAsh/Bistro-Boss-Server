@@ -1,12 +1,15 @@
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const express = require("express");
 const cors = require("cors");
+const cookieParser = require('cookie-parser');
+const jwt = require('jsonwebtoken');
 require("dotenv").config();
 
 const app = express();
 const port = process.env.PORT || 5000;
 
 app.use(express.json());
+app.use(cookieParser());
 app.use(cors());
 
 // mongoDB Connection -----------------------------
