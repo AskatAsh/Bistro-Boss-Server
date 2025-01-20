@@ -43,6 +43,22 @@ async function run() {
       res.send({token});
     })
 
+    // verify token middleware
+    const verifyToken = (req, res, next) => {
+      console.log("inside verify token", req.headers.authorization);
+      if(!req.headers.authorization){
+        return res.status(401).send({message: "Forbidden Access!"});
+      }
+      const token = req.headers.authorization;
+      jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (error, decoded) => {
+        if(error){
+          return res.status(401).send({message: "Forbidden Access!"});
+        }
+        req.decoded = decoded;
+        next();
+      })
+    }
+
     // GET menu data API
     app.get("/menu", async (req, res) => {
       const result = await menuCollection.find().toArray();
@@ -91,7 +107,7 @@ async function run() {
     })
 
     // get all users
-    app.get('/users', async (req, res) => {
+    app.get('/users', verifyToken, async (req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result);
     })
