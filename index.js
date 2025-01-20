@@ -86,6 +86,25 @@ async function run() {
       res.send(result);
     })
 
+    // make user admin
+    app.patch('/users/admin/:id', async (req, res) => {
+      const id = req.params.id;
+      const filter = {_id: new ObjectId(id)}
+      const user = await userCollection.findOne(filter);
+      if(user){
+        const updateDoc = {
+          $set: {
+            ...user,
+            role: 'admin'
+          },
+        };
+        const result = await userCollection.updateOne(filter, updateDoc);
+        console.log(user);
+        return res.send(result);
+      }
+      res.send({message: "Sorry! No user can be found."});
+    })
+
     // Send a ping to confirm a successful connection
     // await client.db("admin").command({ ping: 1 });
     console.log(
