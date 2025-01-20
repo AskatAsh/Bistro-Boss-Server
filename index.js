@@ -56,7 +56,7 @@ async function run() {
         if (error) {
           return res.status(401).send({ message: "Forbidden Access!" });
         }
-        // console.log("token is verified.")
+        console.log("token is verified.")
         req.decoded = decoded;
         next();
       });
@@ -75,8 +75,9 @@ async function run() {
     }
 
     // get verified admin
-    app.get("/user/admin", verifyToken, verifyAdmin, async (req, res) => {
+    app.get("/user/admin", verifyToken, async (req, res) => {
       const email = req.query.email;
+      console.log(email, req.decoded.email);
       if (email !== req.decoded.email) {
         return res.status(403).send({ message: "Unauthorize Access" });
       }
@@ -88,6 +89,13 @@ async function run() {
       }
       res.send({ isAdmin });
     });
+
+    // Add menu item
+    app.post("/menu", verifyToken, verifyAdmin, async(req, res) => {
+      const menuItem = req.body;
+      const result = await menuCollection.insertOne(menuItem);
+      res.send(result);
+    })
 
     // GET menu data API
     app.get("/menu", async (req, res) => {
@@ -109,10 +117,11 @@ async function run() {
     });
 
     // get all carts data
-    app.get("/carts", async (req, res) => {
+    app.get("/carts", verifyToken, async (req, res) => {
       const email = req.query.email;
       const query = { userEmail: email };
       const result = await cartCollection.find(query).toArray();
+      console.log("carts data send");
       res.send(result);
     });
 
@@ -137,13 +146,13 @@ async function run() {
     });
 
     // get all users
-    app.get("/users", verifyToken, async (req, res) => {
+    app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result);
     });
 
     // make user admin
-    app.patch("/users/admin/:id", async (req, res) => {
+    app.patch("/users/admin/:id", verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const user = await userCollection.findOne(filter);
@@ -161,7 +170,7 @@ async function run() {
     });
 
     // delete a user
-    app.delete("/users/:id", async (req, res) => {
+    app.delete("/users/:id", verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await userCollection.deleteOne(query);
