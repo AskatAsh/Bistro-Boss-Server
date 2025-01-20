@@ -90,6 +90,26 @@ async function run() {
       res.send({ isAdmin });
     });
 
+    // update a menu item
+    app.patch('/menu/:id', verifyToken, verifyAdmin, async(req, res) => {
+      const id = req.params.id;
+      const updateItem = req.body;
+      const query = {_id: new ObjectId(id)};
+      const updateDoc = {
+        $set: updateItem
+      }
+      const result = await menuCollection.updateOne(query, updateDoc);
+      res.send(result);
+    })
+
+    // get a menu item
+    app.get('/menu/:id', async(req, res) => {
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)};
+      const result = await menuCollection.findOne(query);
+      res.send(result);
+    })
+
     // delete a menu item
     app.delete('/menu/:id', verifyToken, verifyAdmin, async(req,res) => {
       const id = req.params.id;
