@@ -90,6 +90,14 @@ async function run() {
       res.send({ isAdmin });
     });
 
+    // delete a menu item
+    app.delete('/menu/:id', verifyToken, verifyAdmin, async(req,res) => {
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)};
+      const result = await menuCollection.deleteOne(query);
+      res.send(result);
+    })
+
     // Add menu item
     app.post("/menu", verifyToken, verifyAdmin, async(req, res) => {
       const menuItem = req.body;
