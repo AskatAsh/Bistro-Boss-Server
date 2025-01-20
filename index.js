@@ -36,6 +36,13 @@ async function run() {
     const cartCollection = client.db("bistroBoss").collection("carts");
     const userCollection = client.db("bistroBoss").collection("users");
 
+    // jwt related API
+    app.post('/jwt', async (req, res) => {
+      const userInfo = req.body;
+      const token = jwt.sign(userInfo, process.env.ACCESS_TOKEN_SECRET, {expiresIn: '1h'});
+      res.send({token});
+    })
+
     // GET menu data API
     app.get("/menu", async (req, res) => {
       const result = await menuCollection.find().toArray();
