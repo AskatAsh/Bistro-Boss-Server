@@ -62,14 +62,26 @@ async function run() {
       });
     };
 
+    // verify admin middleware
+    const verifyAdmin = async(req, res, next) => {
+      const email = req.decoded?.email;
+      const query = {email: email};
+      const user = await userCollection.findOne(query);
+      const isAdmin = user?.role === 'admin';
+      if(!isAdmin){
+        return res.status(403).send({message: "Forbidden Access!"});
+      }
+      next();
+    }
+
     // get verified admin
-    app.get("/user/admin", async (req, res) => {
+    app.get("/user/admin", verifyToken, verifyAdmin, async (req, res) => {
       const email = req.query.email;
       if (email !== req.decoded.email) {
         return res.status(403).send({ message: "Unauthorize Access" });
       }
       const query = { email: email };
-      const result = await userCollection.findOne(query);
+      const user = await userCollection.findOne(query);
       let isAdmin;
       if (user) {
         isAdmin = user?.role === "admin";
