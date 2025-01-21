@@ -249,8 +249,8 @@ async function run() {
     app.get("/payments", verifyToken, async (req, res) => {
       const email = req.query.email;
       const id = req.query.id;
-      if(req.query.email !== req.decoded.email){
-        return res.send(403).send({message: "Forbidden Access."});
+      if (req.query.email !== req.decoded.email) {
+        return res.send(403).send({ message: "Forbidden Access." });
       }
       let query = {};
       if (email) {
@@ -262,6 +262,34 @@ async function run() {
       const result = await paymentCollection.find(query).toArray();
 
       res.send(result);
+    });
+
+    // get admin stats
+    app.get("/admin-stats", verifyToken, verifyAdmin, async (req, res) => {
+      const users = await userCollection.estimatedDocumentCount();
+      const menuItems = await menuCollection.estimatedDocumentCount();
+      const orders = await paymentCollection.estimatedDocumentCount();
+      // const payments = await paymentCollection.find().toArray();
+      // const totalRevenue = payments.reduce((total, item) => total + item.price, 0);
+
+      const revenue = await paymentCollection.aggregate([
+        {
+          $group: {
+            _id: null,
+            totalRevenue: {$sum: "$price"}
+          }
+        }
+      ]).toArray();
+
+      console.log(revenue);
+      const totalRevenue = revenue[0]?.totalRevenue || 0;
+
+      res.send({
+        users,
+        menuItems,
+        orders,
+        totalRevenue
+      })
     });
 
     // Send a ping to confirm a successful connection
