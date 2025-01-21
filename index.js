@@ -289,12 +289,12 @@ async function run() {
         users,
         menuItems,
         orders,
-        totalRevenue,
+        totalRevenue: totalRevenue.toFixed(2),
       });
     });
 
     // get order stats
-    app.get("/order-stats", async (req, res) => {
+    app.get("/order-stats", verifyToken, verifyAdmin, async (req, res) => {
       const result = await paymentCollection
         .aggregate([
           {
