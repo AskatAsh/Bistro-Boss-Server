@@ -37,6 +37,7 @@ async function run() {
     const reviewCollection = client.db("bistroBoss").collection("reviews");
     const cartCollection = client.db("bistroBoss").collection("carts");
     const userCollection = client.db("bistroBoss").collection("users");
+    const paymentCollection = client.db("bistroBoss").collection("payments");
 
     // jwt related API
     app.post("/jwt", async (req, res) => {
@@ -226,6 +227,41 @@ async function run() {
       res.send({
         clientSecret: paymentIntent.client_secret,
       });
+    });
+
+    // add payment to collection and delete carts
+    app.post("/payments", async (req, res) => {
+      const payment = req.body;
+      console.log(payment);
+      // Insert payment into the collection
+      const paymentResult = await paymentCollection.insertOne(payment);
+
+      // Delete the cart items
+      const query = {
+        _id: { $in: payment.cartIds.map((id) => new ObjectId(id)) },
+      };
+      const deleteResult = await cartCollection.deleteMany(query);
+
+      res.send({ paymentResult, deleteResult });
+    });
+
+    // get payments data
+    app.get("/payments", verifyToken, async (req, res) => {
+      const email = req.query.email;
+      const id = req.query.id;
+      if(req.query.email !== req.decoded.email){
+        return res.send(403).send({message: "Forbidden Access."});
+      }
+      let query = {};
+      if (email) {
+        query = { email: email };
+      }
+      if (id) {
+        query = { _id: new ObjectId(id) };
+      }
+      const result = await paymentCollection.find(query).toArray();
+
+      res.send(result);
     });
 
     // Send a ping to confirm a successful connection
