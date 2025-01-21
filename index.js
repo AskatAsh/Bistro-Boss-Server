@@ -272,24 +272,69 @@ async function run() {
       // const payments = await paymentCollection.find().toArray();
       // const totalRevenue = payments.reduce((total, item) => total + item.price, 0);
 
-      const revenue = await paymentCollection.aggregate([
-        {
-          $group: {
-            _id: null,
-            totalRevenue: {$sum: "$price"}
-          }
-        }
-      ]).toArray();
+      const revenue = await paymentCollection
+        .aggregate([
+          {
+            $group: {
+              _id: null,
+              totalRevenue: { $sum: "$price" },
+            },
+          },
+        ])
+        .toArray();
 
-      console.log(revenue);
       const totalRevenue = revenue[0]?.totalRevenue || 0;
 
       res.send({
         users,
         menuItems,
         orders,
-        totalRevenue
-      })
+        totalRevenue,
+      });
+    });
+
+    // get order stats
+    app.get("/order-stats", async (req, res) => {
+      const result = await paymentCollection
+        .aggregate([
+          {
+            $unwind: "$menuItemIds",
+          },
+          {
+            $addFields: {
+              menuItemObjectId: { $toObjectId: "$menuItemIds" },
+            },
+          },
+          {
+            $lookup: {
+              from: "menu",
+              localField: "menuItemObjectId",
+              foreignField: "_id",
+              as: "menuItems",
+            },
+          },
+          {
+            $unwind: "$menuItems",
+          },
+          {
+            $group: {
+              _id: "$menuItems.category",
+              quantity: { $sum: 1 },
+              revenue: { $sum: "$menuItems.price" },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              category: "$_id",
+              quantity: "$quantity",
+              revenue: "$revenue",
+            },
+          },
+        ])
+        .toArray();
+
+      res.send(result);
     });
 
     // Send a ping to confirm a successful connection
