@@ -5,6 +5,8 @@ const cookieParser = require("cookie-parser");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
+const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
+
 const app = express();
 const port = process.env.PORT || 5000;
 
@@ -56,23 +58,23 @@ async function run() {
         if (error) {
           return res.status(401).send({ message: "Forbidden Access!" });
         }
-        console.log("token is verified.")
+        console.log("token is verified.");
         req.decoded = decoded;
         next();
       });
     };
 
     // verify admin middleware
-    const verifyAdmin = async(req, res, next) => {
+    const verifyAdmin = async (req, res, next) => {
       const email = req.decoded?.email;
-      const query = {email: email};
+      const query = { email: email };
       const user = await userCollection.findOne(query);
-      const isAdmin = user?.role === 'admin';
-      if(!isAdmin){
-        return res.status(403).send({message: "Forbidden Access!"});
+      const isAdmin = user?.role === "admin";
+      if (!isAdmin) {
+        return res.status(403).send({ message: "Forbidden Access!" });
       }
       next();
-    }
+    };
 
     // get verified admin
     app.get("/user/admin", verifyToken, async (req, res) => {
@@ -91,39 +93,39 @@ async function run() {
     });
 
     // update a menu item
-    app.patch('/menu/:id', verifyToken, verifyAdmin, async(req, res) => {
+    app.patch("/menu/:id", verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const updateItem = req.body;
-      const query = {_id: new ObjectId(id)};
+      const query = { _id: new ObjectId(id) };
       const updateDoc = {
-        $set: updateItem
-      }
+        $set: updateItem,
+      };
       const result = await menuCollection.updateOne(query, updateDoc);
       res.send(result);
-    })
+    });
 
     // get a menu item
-    app.get('/menu/:id', async(req, res) => {
+    app.get("/menu/:id", async (req, res) => {
       const id = req.params.id;
-      const query = {_id: new ObjectId(id)};
+      const query = { _id: new ObjectId(id) };
       const result = await menuCollection.findOne(query);
       res.send(result);
-    })
+    });
 
     // delete a menu item
-    app.delete('/menu/:id', verifyToken, verifyAdmin, async(req,res) => {
+    app.delete("/menu/:id", verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
-      const query = {_id: new ObjectId(id)};
+      const query = { _id: new ObjectId(id) };
       const result = await menuCollection.deleteOne(query);
       res.send(result);
-    })
+    });
 
     // Add menu item
-    app.post("/menu", verifyToken, verifyAdmin, async(req, res) => {
+    app.post("/menu", verifyToken, verifyAdmin, async (req, res) => {
       const menuItem = req.body;
       const result = await menuCollection.insertOne(menuItem);
       res.send(result);
-    })
+    });
 
     // GET menu data API
     app.get("/menu", async (req, res) => {
@@ -180,22 +182,27 @@ async function run() {
     });
 
     // make user admin
-    app.patch("/users/admin/:id", verifyToken, verifyAdmin, async (req, res) => {
-      const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const user = await userCollection.findOne(filter);
-      if (user) {
-        const updateDoc = {
-          $set: {
-            role: "admin",
-          },
-        };
-        const result = await userCollection.updateOne(filter, updateDoc);
-        console.log(user);
-        return res.send(result);
+    app.patch(
+      "/users/admin/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const filter = { _id: new ObjectId(id) };
+        const user = await userCollection.findOne(filter);
+        if (user) {
+          const updateDoc = {
+            $set: {
+              role: "admin",
+            },
+          };
+          const result = await userCollection.updateOne(filter, updateDoc);
+          console.log(user);
+          return res.send(result);
+        }
+        res.send({ message: "Sorry! No user can be found." });
       }
-      res.send({ message: "Sorry! No user can be found." });
-    });
+    );
 
     // delete a user
     app.delete("/users/:id", verifyToken, verifyAdmin, async (req, res) => {
@@ -203,6 +210,22 @@ async function run() {
       const query = { _id: new ObjectId(id) };
       const result = await userCollection.deleteOne(query);
       res.send(result);
+    });
+
+    // payment intent
+    app.post("/create-payment-intent", async (req, res) => {
+      const { price } = req.body;
+      const amount = parseInt(price * 100);
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
     });
 
     // Send a ping to confirm a successful connection
